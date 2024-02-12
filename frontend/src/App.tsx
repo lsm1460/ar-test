@@ -1,8 +1,12 @@
+import { Outlet } from "react-router-dom";
 import "./App.css";
-import ArStep from "./components/ArStep";
 
 function App() {
-  return <ArStep />;
+  return (
+    <div>
+      <Outlet />
+    </div>
+  );
 }
 
 export default App;
