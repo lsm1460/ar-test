@@ -32,43 +32,6 @@ function ArStep() {
     });
   };
 
-  const helpMeanShift = (_width: number, _height: number) => {
-    const template = cv.imread("target");
-    const hsvRoi = new cv.Mat();
-    const mask = new cv.Mat();
-    const dst = new cv.Mat(); // 이미지 트래킹을 위한 타겟 이미지 변환 처리의 최종 결과물
-
-    cv.cvtColor(template, hsvRoi, cv.COLOR_RGBA2RGB);
-    cv.cvtColor(hsvRoi, hsvRoi, cv.COLOR_RGB2HSV);
-    const lowScalar = new cv.Scalar(30, 30, 0);
-    const highScalar = new cv.Scalar(180, 180, 180);
-    const low = new cv.Mat(hsvRoi.rows, hsvRoi.cols, hsvRoi.type(), lowScalar);
-    const high = new cv.Mat(
-      hsvRoi.rows,
-      hsvRoi.cols,
-      hsvRoi.type(),
-      highScalar
-    );
-    cv.inRange(hsvRoi, low, high, mask);
-    const roiHist = new cv.Mat();
-    const hsvRoiVec = new cv.MatVector();
-    hsvRoiVec.push_back(hsvRoi);
-    cv.calcHist(hsvRoiVec, [0], mask, roiHist, [180], [0, 180]);
-    cv.normalize(roiHist, roiHist, 0, 255, cv.NORM_MINMAX);
-
-    hsvRoi.delete();
-    mask.delete();
-    low.delete();
-    high.delete();
-    hsvRoiVec.delete();
-
-    const hsv = new cv.Mat(_height, _width, cv.CV_8UC3);
-    const hsvVec = new cv.MatVector();
-    hsvVec.push_back(hsv);
-
-    return [dst, hsv, hsvVec, roiHist];
-  };
-
   const handleTracking = async () => {
     if (!videoElRef.current) {
       return;
@@ -81,13 +44,6 @@ function ArStep() {
     videoEl.height = height; //prevent Opencv.js error.
 
     await handleCamera(width, height);
-    const [dst, hsv, hsvVec, roiHist] = helpMeanShift(width, height);
-
-    const termCrit = new cv.TermCriteria(
-      cv.TermCriteria_EPS | cv.TermCriteria_COUNT,
-      10,
-      1
-    );
 
     const capture = new cv.VideoCapture(videoEl);
 
@@ -95,19 +51,17 @@ function ArStep() {
 
     const processe = () => {
       capture.read(frame);
+      let templ = cv.imread("target");
+      let dst = new cv.Mat();
+      let mask = new cv.Mat();
 
-      cv.cvtColor(frame, hsv, cv.COLOR_RGBA2RGB);
-      cv.cvtColor(hsv, hsv, cv.COLOR_RGB2HSV);
-      const trackWindow = new cv.Rect(0, 0, 500, 500);
-      cv.calcBackProject(hsvVec, [0], roiHist, dst, [0, 180], 1);
+      // Template Matching
+      cv.matchTemplate(frame, templ, dst, cv.TM_CCOEFF, mask);
+      let result = cv.minMaxLoc(dst, mask);
 
-      cv.imshow("output", hsv);
-      // @ts-ignore
-      const [score, _pos] = cv.meanShift(dst, trackWindow, termCrit);
+      console.log("result", result);
 
-      console.log("_res", score, JSON.stringify(_pos));
-
-      requestAnimationFrame(processe);
+      setTimeout(processe, 100); // 실행단위를 쪼개면 좀 나아지지 않을까?
     };
 
     processe();
@@ -122,16 +76,6 @@ function ArStep() {
   return (
     <div>
       <img src="/pinball.jpg" id="target" style={{ display: "none" }} />
-      <canvas
-        id="output"
-        style={{
-          width: "100%",
-          height: "50vh",
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-        }}
-      ></canvas>
       {isLoading ? (
         <div>Loading, please wait...</div>
       ) : (
