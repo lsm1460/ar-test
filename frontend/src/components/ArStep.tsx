@@ -77,7 +77,7 @@ function ArStep() {
     <div>
       <img src="/pinball.jpg" id="target" style={{ display: "none" }} />
       {isLoading ? (
-        <div>Loading, please wait...</div>
+        <div>Loading, please wait...!</div>
       ) : (
         <video ref={videoElRef} style={{ width: "100%", height: "100dvh" }} />
       )}
